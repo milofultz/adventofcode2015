@@ -22,14 +22,14 @@ ende
   cli
 
 TEST:
-  ;; GetSmallestLWH
+  ;; GetSmallestArea
   ;lda #$30
-  ;sta length
+  ;sta topArea
   ;lda #$10
-  ;sta width
+  ;sta sideArea
   ;lda #$20
-  ;sta height
-  ;jsr GetSmallestLWH
+  ;sta frontArea
+  ;jsr GetSmallestArea
   ;jmp Infinite
 
   ;; Multiply
@@ -42,28 +42,28 @@ TEST:
 ; Helper Subroutines
 ;
 
-GetSmallestLWH:
-  ; IN:  length, width, and height values
+GetSmallestArea:
+  ; IN:  topArea, sideArea, and frontArea values
   ; OUT: smallest dimension in accumulator
-  lda length
+  lda topArea
   sec
-  cmp width                     ; If width is smaller than the length
-  bcs WidthIsSmaller            ;   Load width into accumulator
+  cmp sideArea                  ; If sideArea is smaller than the topArea
+  bcs SideAreaIsSmaller         ;   Load sideArea into accumulator
 
-  lda length                    ; Else, load length into accumulator
-  jmp HeightCheck
+  lda topArea                   ; Else, load topArea into accumulator
+  jmp FrontAreaCheck
 
-  WidthIsSmaller:
-  lda width
+  SideAreaIsSmaller:
+  lda sideArea
 
-  HeightCheck:
-  cmp height                    ; If height is smaller than current smallest
-  bcs HeightIsSmaller           ;   Load height in accumulator
+  FrontAreaCheck:
+  cmp frontArea                 ; If frontArea is smaller than current smallest
+  bcs FrontAreaIsSmaller        ;   Load frontArea in accumulator
                                 ; Else, keep previous value in accumulator
   rts                           ; Return from the subroutine
 
-  HeightIsSmaller:
-  lda height
+  FrontAreaIsSmaller:
+  lda frontArea
   rts                           ; Return from the subroutine
 
 Multiply:
