@@ -36,10 +36,10 @@ TEST:
 ;  lda #$20
 ;  sta frontArea + 1
 ;
-;  ldx #$08                      ; Address to most-significant digit of topArea
-;  ldy #$0a                      ; Address to most-significant digit of sideArea
+;  ldx #$08                      ; Address to most significant digit of topArea
+;  ldy #$0a                      ; Address to most significant digit of sideArea
 ;  jsr GetSmallest
-;  ldy #$0c                      ; Address to most-significant digit of frontArea
+;  ldy #$0c                      ; Address to most significant digit of frontArea
 ;  jsr GetSmallest
 ;  txa
 ;  jmp Infinite
@@ -53,15 +53,15 @@ TEST:
 ;  jsr Multiply                  ; Result should be #$012c/#300
 ;  jmp Infinite
 
-;  ; FindArea
-;  lda #10
-;  sta length
-;  lda #30
-;  sta width
-;  lda #8
-;  sta height
-;  jsr FindArea
-;  jmp Infinite
+  ; FindArea
+  lda #10
+  sta length
+  lda #30
+  sta width
+  lda #8
+  sta height
+  jsr FindArea
+  jmp Infinite
 
 ;
 ; Helper Subroutines
@@ -117,7 +117,69 @@ Multiply:
 FindArea:
   ; IN:  length, width, and height values
   ; OUT: none (updated `area`)
+  AreaOfSides:
+  ldx length
+  ldy width
+  jsr Multiply
+  lda product
+  sta topArea
+  lda product + 1
+  sta topArea + 1               ; Get topArea and store
 
+  ldy height
+  jsr Multiply
+  lda product
+  sta sideArea
+  lda product + 1
+  sta sideArea + 1              ; Get topArea and store
+
+  ldx height
+  ldy width
+  jsr Multiply
+  lda product
+  sta frontArea
+  lda product + 1
+  sta frontArea + 1             ; Get topArea and store
+
+  AreaOfRibbon:
+  ldx #$08
+  ldy #$0a
+  jsr GetSmallest               ; Set X to smallest area
+  ldy #$0c
+  jsr GetSmallest               ; Set X to smallest area
+  lda $00,x
+  sta area
+  lda $01,x
+  sta area + 1
+
+  ldx #$08                      ; Load memory location of topArea
+
+  SumAreasAndRibbon:
+  lda area                      ; Load most significant area value into acc
+  clc
+  adc $00,x                     ; Add most significant `xxxArea` value to acc
+  adc $00,x                     ;   Once for each side
+  sta area                      ; Store acc in area's most significant digit
+  lda area + 1                  ; Load least significant area value into acc
+  clc
+  adc $01,x                     ; Add least significant `xxxArea` value to acc
+  bcc ContinueSumA              ; If result did not exceed $ff, continue
+  inc area
+
+  ContinueSumA:
+  clc
+  adc $01,x                     ; Add `xxxArea` again (one for each side)
+  bcc ContinueSumB              ; If result did not exceed $ff, continue
+  inc area                      ; Else, increment most significant area value
+
+  ContinueSumB:
+  sta area + 1                  ; Store acc in area's least significant digit
+  inx
+  inx                           ; Move to next `xxxArea` memory location
+  cpx #$0e                      ; If there are more `xxxArea` memory addresses:
+  bne SumAreasAndRibbon         ;   Goto SumAreasAndRibbon
+
+  rts                           ; Else, return from subroutine
 
 
 Infinite:
