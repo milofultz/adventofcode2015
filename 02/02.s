@@ -22,15 +22,27 @@ ende
   cli
 
 TEST:
-  ;; GetSmallestArea
-  ;lda #$30
-  ;sta topArea
-  ;lda #$10
-  ;sta sideArea
-  ;lda #$20
-  ;sta frontArea
-  ;jsr GetSmallestArea
-  ;jmp Infinite
+  ; GetSmallest
+  lda #1
+  sta topArea
+  lda #$30
+  sta topArea + 1
+  lda #1
+  sta sideArea
+  lda #$10
+  sta sideArea + 1
+  lda #0
+  sta frontArea
+  lda #$20
+  sta frontArea + 1
+
+  ldx #$08                      ; Address to most-significant digit of topArea
+  ldy #$0a                      ; Address to most-significant digit of sideArea
+  jsr GetSmallest
+  ldy #$0c                      ; Address to most-significant digit of frontArea
+  jsr GetSmallest
+  txa
+  jmp Infinite
 
   ;; Multiply
   ;ldx #10
@@ -42,29 +54,29 @@ TEST:
 ; Helper Subroutines
 ;
 
-GetSmallestArea:
-  ; IN:  topArea, sideArea, and frontArea values
-  ; OUT: smallest dimension in accumulator
-  lda topArea
+GetSmallest:
+  ; IN:  X (address 1), Y (address 2) - Each address is for 2 byte numbers
+  ; OUT: X (address of smaller number found at X, Y addresses)
   sec
-  cmp sideArea                  ; If sideArea is smaller than the topArea
-  bcs SideAreaIsSmaller         ;   Load sideArea into accumulator
+  lda $00,y
+  cmp $00,x
+  beq CompareLessSignificant
+  bcc StoreY
 
-  lda topArea                   ; Else, load topArea into accumulator
-  jmp FrontAreaCheck
+  StoreX:
+  rts
 
-  SideAreaIsSmaller:
-  lda sideArea
+  StoreY:
+  tya
+  tax
+  rts
 
-  FrontAreaCheck:
-  cmp frontArea                 ; If frontArea is smaller than current smallest
-  bcs FrontAreaIsSmaller        ;   Load frontArea in accumulator
-                                ; Else, keep previous value in accumulator
-  rts                           ; Return from the subroutine
-
-  FrontAreaIsSmaller:
-  lda frontArea
-  rts                           ; Return from the subroutine
+  CompareLessSignificant:
+  lda $01,y
+  cmp $01,x
+  beq StoreX
+  bcs StoreX
+  jmp StoreY
 
 Multiply:
   ; IN:  X (number), Y (iterator) as two numbers to multiply
