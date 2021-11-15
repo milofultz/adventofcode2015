@@ -58,6 +58,6 @@ IRQ:
   rti
 
   org $2000
-  ;incbin "roms/aoc2015/01ins1.raw"
-  ;incbin "roms/aoc2015/01ins2.raw"
-  incbin "roms/aoc2015/01in.raw"
+  ;incbin "roms/aoc2015/01/ins1.raw"
+  ;incbin "roms/aoc2015/01/ins2.raw"
+  incbin "roms/aoc2015/01/in.raw"
