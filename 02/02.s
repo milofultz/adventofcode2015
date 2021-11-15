@@ -22,33 +22,46 @@ ende
   cli
 
 TEST:
-  ; GetSmallest
-  lda #1
-  sta topArea
-  lda #$30
-  sta topArea + 1
-  lda #1
-  sta sideArea
-  lda #$10
-  sta sideArea + 1
-  lda #0
-  sta frontArea
-  lda #$20
-  sta frontArea + 1
+;  ; GetSmallest
+;  lda #1
+;  sta topArea
+;  lda #$30
+;  sta topArea + 1
+;  lda #1
+;  sta sideArea
+;  lda #$10
+;  sta sideArea + 1
+;  lda #0
+;  sta frontArea
+;  lda #$20
+;  sta frontArea + 1
+;
+;  ldx #$08                      ; Address to most-significant digit of topArea
+;  ldy #$0a                      ; Address to most-significant digit of sideArea
+;  jsr GetSmallest
+;  ldy #$0c                      ; Address to most-significant digit of frontArea
+;  jsr GetSmallest
+;  txa
+;  jmp Infinite
 
-  ldx #$08                      ; Address to most-significant digit of topArea
-  ldy #$0a                      ; Address to most-significant digit of sideArea
-  jsr GetSmallest
-  ldy #$0c                      ; Address to most-significant digit of frontArea
-  jsr GetSmallest
-  txa
-  jmp Infinite
+;  ; Multiply
+;  ldx #10
+;  ldy #5
+;  jsr Multiply                  ; Result should be #$0032/#50
+;  ldx #10
+;  ldy #30
+;  jsr Multiply                  ; Result should be #$012c/#300
+;  jmp Infinite
 
-  ;; Multiply
-  ;ldx #10
-  ;ldy #10
-  ;jsr Multiply
-  ;jmp Infinite
+;  ; FindArea
+;  lda #10
+;  sta length
+;  lda #30
+;  sta width
+;  lda #8
+;  sta height
+;  jsr FindArea
+;  jmp Infinite
 
 ;
 ; Helper Subroutines
@@ -82,18 +95,19 @@ Multiply:
   ; IN:  X (number), Y (iterator) as two numbers to multiply
   ; OUT: none (updated `product`)
   lda #0
-  sta product                   ; Initialize product to 0
+  sta product + 1               ; Initialize product to 0
+  sta product
 
   AddNum:
   txa                           ; Put number in accumulator
   clc
-  adc product                   ; Sum product and number in accumulator
+  adc product + 1               ; Sum product and number in accumulator
   bcc StoreNewProduct           ; If sum didnt exceed #$ff, goto StoreNewProduct
 
-  inc product + 1               ; Else, increment second place of product
+  inc product                   ; Else, increment second place of product
 
   StoreNewProduct:
-  sta product                   ; Store new sum in product
+  sta product + 1               ; Store new sum in product
   dey                           ; Decrement iterator
   bne AddNum                    ; If iterator is not zero, goto AddNum
 
