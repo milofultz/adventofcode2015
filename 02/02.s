@@ -10,6 +10,7 @@ enum $00                        ; Declare memory for variables
   sideArea rBYTE 2
   frontArea rBYTE 2
   area rBYTE 2
+  memory rBYTE 2
 ende
 
   org $200
@@ -19,9 +20,104 @@ ende
 
   _setw IRQ, VBLANK_IRQ
 
+  lda #0
+  sta memory
+  lda #$30
+  sta memory + 1
+
   cli
 
-TEST:
+; $30-39 = 0-9
+; $0a    = LF (\n)
+; $78    = 'x'
+
+MAIN:
+  lda #0                        ; Init accumulator to 0
+  tax                           ; Init X register to 0 (pointer to L,W,H)
+  tay                           ; Init Y register to 0 (memory pointer)
+
+  GetNextChar:
+  lda ($10),y                   ; Load dereferenced value $0010 into accumulator
+  inc memory                    ; Increment memory LSD
+  bne ContinueGetNextChar       ; If memory LSD did not exceed $ff, continue
+
+  jsr IncrementHighMemory       ; Else, increment memory MSD
+
+  ContinueGetNextChar:
+  cmp #0
+  beq Infinite                  ; If value is zero, goto Infinite (end of input)
+  cmp #$78                      ; If accumulator represents an 'x',
+  beq StoreNum                  ;   Goto StoreNum
+  sec
+  sbc #$30                      ; If accumulator represents a number,
+  bcs CompileNum                ;   Goto CompileNum (acc contains number)
+                                ; Else (if accumulator represents a newline),
+  AddAreaLSD:
+  jsr FindArea                  ; Calculate the total area
+  lda total + 2                 ; Load total LSD into accumulator
+  clc
+  adc area + 1                  ; Add area LSD to total LSD
+  sta total + 2                 ; Store result in total LSD
+  bcc AddAreaSD                 ; If sum didn't exceed $ff, continue
+
+  jsr IncrementTotalSD
+
+  AddAreaSD:
+  lda total + 1                 ; Load total SD into accumulator
+  clc
+  adc area                      ; Add area MSD to total SD
+  sta total + 1                 ; Store result in total SD
+  bcc ContinueAddAreaSD         ; If sum didn't exceed $ff, continue
+
+  jsr IncrementTotalMSD
+
+  ContinueAddAreaSD:
+  lda #0                        ; Re-initialize L,W,H and X/Y register
+  sta length
+  sta width
+  sta height
+  tax
+  tay
+  jmp GetNextChar               ; Start next box
+
+  StoreNum:
+  inx                           ; Point to next side (L,W,H)
+  jmp GetNextChar               ; Get next character
+
+  CompileNum:
+  pha                           ; Save current number
+  txa
+  pha                           ; Save current pointer to L,W,H
+  tay
+  ldx $05,y                     ; Load tens-place of number into X register
+  ldy #10                       ; Load 10 into Y register
+  jsr Multiply                  ; Multiply tens-place number by 10
+  pla                           ; Retrieve current pointer to L,W,H
+  tax                           ; Store it in X register
+  pla                           ; Retrieve current number
+  clc
+  adc product + 1               ; Add current number to product LSD
+  sta $05,x                     ; Store sum at current side (L,W,H)
+  jmp GetNextChar               ; Get next character
+
+  IncrementHighMemory:
+  inc memory + 1                ; Increment memory MSD
+  rts                           ; Return from subroutine
+
+  IncrementTotalSD:
+  inc total + 1                 ; Else, increment total SD
+  beq IncrementTotalMSD
+  rts
+
+  IncrementTotalMSD:
+  inc total                     ; Else, increment total MSD
+  rts
+
+Infinite:
+  jmp Infinite
+
+
+;TEST:
 ;  ; GetSmallest
 ;  lda #1
 ;  sta topArea
@@ -40,10 +136,9 @@ TEST:
 ;  ldy #$0a                      ; Address to most significant digit of sideArea
 ;  jsr GetSmallest
 ;  ldy #$0c                      ; Address to most significant digit of frontArea
-;  jsr GetSmallest
-;  txa
+;  jsr GetSmallest               ; Result should be $0c in the X register
 ;  jmp Infinite
-
+;
 ;  ; Multiply
 ;  ldx #10
 ;  ldy #5
@@ -52,16 +147,20 @@ TEST:
 ;  ldy #30
 ;  jsr Multiply                  ; Result should be #$012c/#300
 ;  jmp Infinite
+;
+;  ; FindArea
+;  lda #10
+;  sta length
+;  lda #30
+;  sta width
+;  lda #8
+;  sta height
+;  jsr FindArea                  ; Should result in #$0528/#1320
+;  jmp Infinite
+;
+;Infinite:
+;  jmp Infinite
 
-  ; FindArea
-  lda #10
-  sta length
-  lda #30
-  sta width
-  lda #8
-  sta height
-  jsr FindArea
-  jmp Infinite
 
 ;
 ; Helper Subroutines
@@ -126,7 +225,8 @@ FindArea:
   lda product + 1
   sta topArea + 1               ; Get topArea and store
 
-  ldy height
+  ldx height
+  ldy length
   jsr Multiply
   lda product
   sta sideArea
@@ -160,17 +260,18 @@ FindArea:
   adc $00,x                     ; Add most significant `xxxArea` value to acc
   adc $00,x                     ;   Once for each side
   sta area                      ; Store acc in area's most significant digit
+
   lda area + 1                  ; Load least significant area value into acc
   clc
   adc $01,x                     ; Add least significant `xxxArea` value to acc
   bcc ContinueSumA              ; If result did not exceed $ff, continue
-  inc area
+  jsr IncrementAreaMSD
 
   ContinueSumA:
   clc
   adc $01,x                     ; Add `xxxArea` again (one for each side)
   bcc ContinueSumB              ; If result did not exceed $ff, continue
-  inc area                      ; Else, increment most significant area value
+  jsr IncrementAreaMSD
 
   ContinueSumB:
   sta area + 1                  ; Store acc in area's least significant digit
@@ -181,14 +282,14 @@ FindArea:
 
   rts                           ; Else, return from subroutine
 
-
-Infinite:
-  jmp Infinite
+  IncrementAreaMSD:
+  inc area                      ; Else, increment area
+  rts
 
 IRQ:
   rti
 
-  org $2000
+  org $3000
   ;incbin "roms/aoc2015/02/ins1.raw"
   ;incbin "roms/aoc2015/02/ins2.raw"
   incbin "roms/aoc2015/02/in.raw"
