@@ -20,10 +20,10 @@ ende
 
   _setw IRQ, VBLANK_IRQ
 
+  lda #$30                      ; Init `memory` to #$3000
+  sta memory + 1
   lda #0
   sta memory
-  lda #$30
-  sta memory + 1
 
   cli
 
@@ -31,7 +31,7 @@ ende
 ; $0a    = LF (\n)
 ; $78    = 'x'
 
-MAIN:
+Part1:
   lda #0                        ; Init accumulator to 0
   tax                           ; Init X register to 0 (pointer to L,W,H)
   tay                           ; Init Y register to 0 (memory pointer)
@@ -40,27 +40,25 @@ MAIN:
   lda ($10),y                   ; Load dereferenced value $0010 into accumulator
   inc memory                    ; Increment memory LSD
   bne ContinueGetNextChar       ; If memory LSD did not exceed $ff, continue
-
   jsr IncrementHighMemory       ; Else, increment memory MSD
 
   ContinueGetNextChar:
-  cmp #0
-  beq Infinite                  ; If value is zero, goto Infinite (end of input)
+  cmp #0                        ; If value is zero,
+  beq Infinite                  ;   Goto Infinite (end of input)
   cmp #$78                      ; If accumulator represents an 'x',
   beq StoreNum                  ;   Goto StoreNum
   sec
   sbc #$30                      ; If accumulator represents a number,
   bcs CompileNum                ;   Goto CompileNum (acc contains number)
-                                ; Else (if accumulator represents a newline),
+                                ; Else if accumulator represents a newline,
   AddAreaLSD:
-  jsr FindArea                  ; Calculate the total area
+  jsr FindArea                  ; Calculate the total area in `area`
   lda total + 2                 ; Load total LSD into accumulator
   clc
   adc area + 1                  ; Add area LSD to total LSD
   sta total + 2                 ; Store result in total LSD
   bcc AddAreaSD                 ; If sum didn't exceed $ff, continue
-
-  jsr IncrementTotalSD
+  jsr IncrementTotalSD          ; Else, increment total SD
 
   AddAreaSD:
   lda total + 1                 ; Load total SD into accumulator
@@ -68,8 +66,7 @@ MAIN:
   adc area                      ; Add area MSD to total SD
   sta total + 1                 ; Store result in total SD
   bcc ContinueAddAreaSD         ; If sum didn't exceed $ff, continue
-
-  jsr IncrementTotalMSD
+  jsr IncrementTotalMSD         ; Else, increment total MSD
 
   ContinueAddAreaSD:
   lda #0                        ; Re-initialize L,W,H and X/Y register
@@ -105,12 +102,13 @@ MAIN:
   rts                           ; Return from subroutine
 
   IncrementTotalSD:
-  inc total + 1                 ; Else, increment total SD
-  beq IncrementTotalMSD
+  inc total + 1                 ; Increment total SD
+  beq IncrementTotalMSD         ; If total + 1 crossed from $ff -> $00,
+                                ;   Goto IncrementTotalMSD
   rts
 
   IncrementTotalMSD:
-  inc total                     ; Else, increment total MSD
+  inc total                     ; Increment total MSD
   rts
 
 Infinite:
@@ -202,14 +200,12 @@ Multiply:
   clc
   adc product + 1               ; Sum product and number in accumulator
   bcc StoreNewProduct           ; If sum didnt exceed #$ff, goto StoreNewProduct
-
   inc product                   ; Else, increment second place of product
 
   StoreNewProduct:
   sta product + 1               ; Store new sum in product
   dey                           ; Decrement iterator
   bne AddNum                    ; If iterator is not zero, goto AddNum
-
   rts                           ; Else, return from subroutine
 
 
@@ -225,8 +221,7 @@ FindArea:
   lda product + 1
   sta topArea + 1               ; Get topArea and store
 
-  ldx height
-  ldy length
+  ldy height
   jsr Multiply
   lda product
   sta sideArea
@@ -262,16 +257,8 @@ FindArea:
   sta area                      ; Store acc in area's most significant digit
 
   lda area + 1                  ; Load least significant area value into acc
-  clc
-  adc $01,x                     ; Add least significant `xxxArea` value to acc
-  bcc ContinueSumA              ; If result did not exceed $ff, continue
-  jsr IncrementAreaMSD
-
-  ContinueSumA:
-  clc
-  adc $01,x                     ; Add `xxxArea` again (one for each side)
-  bcc ContinueSumB              ; If result did not exceed $ff, continue
-  jsr IncrementAreaMSD
+  jsr SumAreaLSD                ; Jump to subroutine SumAreaLSD
+  jsr SumAreaLSD                ; Do it once for each side
 
   ContinueSumB:
   sta area + 1                  ; Store acc in area's least significant digit
@@ -279,11 +266,16 @@ FindArea:
   inx                           ; Move to next `xxxArea` memory location
   cpx #$0e                      ; If there are more `xxxArea` memory addresses:
   bne SumAreasAndRibbon         ;   Goto SumAreasAndRibbon
+  rts                           ; Else, return from subroutine
 
+  SumAreaLSD:
+  clc
+  adc $01,x                     ; Add least significant `xxxArea` value to acc
+  bcs IncrementAreaMSD          ; If result of $ff -> $00, goto IncrementAreaMSD
   rts                           ; Else, return from subroutine
 
   IncrementAreaMSD:
-  inc area                      ; Else, increment area
+  inc area                      ; Increment area MSD
   rts
 
 IRQ:
