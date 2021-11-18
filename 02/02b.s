@@ -8,6 +8,7 @@ enum $00                        ; Declare memory for variables
   height rBYTE 1
   isSorted rBYTE 1
   factor rBYTE 1
+  ribbon rBYTE 1
   temp rBYTE 1
 ende
 enum $10
@@ -111,9 +112,7 @@ ende
 ;  IncrementTotalMSD:
 ;  inc total                     ; Increment total MSD
 ;  rts
-;
-;Infinite:
-;  jmp Infinite
+
 
 
 ;TEST:
@@ -128,15 +127,28 @@ ende
 ;  jsr GetTwoSmallest            ; Result should be #10, #20, #30
 ;  jmp Infinite
 ;
-  ; GetVolume
-  lda #10
-  sta length
+;  ; GetVolume
+;  lda #20
+;  sta length
+;  lda #30
+;  sta width
+;  lda #10
+;  sta height
+;
+;  jsr GetVolume                 ; Result should be #$1770/#6000
+;  jmp Infinite
+;
+  ; GetRibbon
   lda #20
-  sta width
+  sta length
   lda #30
+  sta width
+  lda #10
   sta height
 
-  jsr GetVolume                 ; Result should be #$1770/#6000
+  jsr GetRibbon                ; Result should be #$3C/#60
+  jmp Infinite
+
 
 Infinite:
   jmp Infinite
@@ -187,9 +199,26 @@ GetTwoSmallest:
                                 ; Else, the list is sorted
   rts
 
+GetRibbon:
+  ; IN:  length, width, height
+  ; OUT: none (updated `ribbon`)
+  jsr GetTwoSmallest            ; Organize length, width, and height by size
+  lda #0
+  sta ribbon                    ; Initialize ribbon to 0
+  clc
+  adc length
+  adc length
+  adc width
+  adc width
+  sta ribbon
+  rts
+
 GetVolume:
   ; IN:  length, width, height
   ; OUT: none (updated `volume`)
+
+  ; X = Address to current dimension (length, width, height)
+
   lda #0
   sta volume                    ; Initialize volume MSD to #$00
   lda length
@@ -236,74 +265,6 @@ GetVolume:
   sta volume + 1                ; Else, save accumulator value to volume LSD
   rts
 
-;FindArea:
-;  ; IN:  length, width, and height values
-;  ; OUT: none (updated `area`)
-;  AreaOfSides:
-;  ldx length
-;  ldy width
-;  jsr Multiply
-;  lda product
-;  sta topArea
-;  lda product + 1
-;  sta topArea + 1               ; Get topArea and store
-;
-;  ldy height
-;  jsr Multiply
-;  lda product
-;  sta sideArea
-;  lda product + 1
-;  sta sideArea + 1              ; Get topArea and store
-;
-;  ldx height
-;  ldy width
-;  jsr Multiply
-;  lda product
-;  sta frontArea
-;  lda product + 1
-;  sta frontArea + 1             ; Get topArea and store
-;
-;  AreaOfRibbon:
-;  ldx #$08
-;  ldy #$0a
-;  jsr GetSmallest               ; Set X to smallest area
-;  ldy #$0c
-;  jsr GetSmallest               ; Set X to smallest area
-;  lda $00,x
-;  sta area
-;  lda $01,x
-;  sta area + 1
-;
-;  ldx #$08                      ; Load memory location of topArea
-;
-;  SumAreasAndRibbon:
-;  lda area                      ; Load most significant area value into acc
-;  clc
-;  adc $00,x                     ; Add most significant `xxxArea` value to acc
-;  adc $00,x                     ;   Once for each side
-;  sta area                      ; Store acc in area's most significant digit
-;
-;  lda area + 1                  ; Load least significant area value into acc
-;  jsr SumAreaLSD                ; Jump to subroutine SumAreaLSD
-;  jsr SumAreaLSD                ; Do it once for each side
-;
-;  ContinueSumB:
-;  sta area + 1                  ; Store acc in area's least significant digit
-;  inx
-;  inx                           ; Move to next `xxxArea` memory location
-;  cpx #$0e                      ; If there are more `xxxArea` memory addresses:
-;  bne SumAreasAndRibbon         ;   Goto SumAreasAndRibbon
-;  rts                           ; Else, return from subroutine
-;
-;  SumAreaLSD:
-;  clc
-;  adc $01,x                     ; Add least significant `xxxArea` value to acc
-;  bcs IncrementAreaMSD          ; If result of $ff -> $00, goto IncrementAreaMSD
-;  rts                           ; Else, return from subroutine
-;
-;  IncrementAreaMSD:
-;  inc area                      ; Increment area MSD
-;  rts
 
 IRQ:
   rti
