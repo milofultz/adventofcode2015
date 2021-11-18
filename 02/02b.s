@@ -34,6 +34,9 @@ ende
 ; $78    = 'x'
 
 Part2:
+  ; X = pointer to length, width, and height variables
+  ; Y = pointer to `memory` pointer
+
   lda #0                        ; Init accumulator to 0
   tax                           ; Init X register to 0 (pointer to L,W,H)
   tay                           ; Init Y register to 0 (memory pointer)
@@ -59,8 +62,7 @@ Part2:
   AddRibbon:
   lda total + 2                 ; Load total LSD into accumulator
   clc
-  adc ribbon
-  sta total + 2                 ; Store result in total LSD
+  adc ribbon                    ; Add ribbon to total LSD
   bcc AddVolumeLSD              ; If sum didn't exceed $ff, continue
   jsr IncrementTotalSD          ; Else, increment total SD
 
@@ -170,16 +172,17 @@ Infinite:
 Multiply:
   ; IN:  X (number), Y (iterator) as two numbers to multiply
   ; OUT: none (updated `product`)
+
   lda #0
-  sta product + 1               ; Initialize product to 0
-  sta product
+  sta product + 1
+  sta product                   ; Initialize product to 0
 
   AddNum:
   txa                           ; Put number in accumulator
   clc
   adc product + 1               ; Sum product and number in accumulator
   bcc StoreNewProduct           ; If sum didnt exceed #$ff, goto StoreNewProduct
-  inc product                   ; Else, increment second place of product
+  inc product                   ; Else, increment product MSD
 
   StoreNewProduct:
   sta product + 1               ; Store new sum in product
@@ -198,11 +201,11 @@ GetTwoSmallest:
   tax                           ;   this, the final comparison will be with the
                                 ;   last number and a number outside of scope
 
-  OuterLoop:                    ; This loop will iterate through the entire list
+  OuterLoop:
   lda #0
   tay                           ; Initialize current index to 0
   lda #1
-  sta isSorted                  ; Reset the isSorted flag
+  sta isSorted                  ; Set isSorted to 1 (true)
 
   InnerLoop:                    ; This loop will compare two numbers for sorting
   lda $0006,y                   ; Load the second number into the accumulator
@@ -215,7 +218,7 @@ GetTwoSmallest:
   lda temp
   sta $0005,y                   ; Store the second number into first mem slot
   lda #0
-  sta isSorted                  ; Ensure isSorted is not set to 1
+  sta isSorted                  ; Set isSorted to 0 (false)
 
   NextNum:
   stx temp                      ; Load length of input into temp variable
@@ -225,12 +228,12 @@ GetTwoSmallest:
                                 ; Else, continue
   lda isSorted                  ; Load isSorted flag into the accumulator
   beq OuterLoop                 ; If isSorted is not 1 (false), goto OuterLoop
-                                ; Else, the list is sorted
-  rts
+  rts                           ; Else, the list is sorted
 
 GetRibbon:
   ; IN:  length, width, height
   ; OUT: none (updated `ribbon`)
+
   jsr GetTwoSmallest            ; Organize length, width, and height by size
   lda #0
   sta ribbon                    ; Initialize ribbon to 0
@@ -238,9 +241,9 @@ GetRibbon:
   adc length
   adc length
   adc width
-  adc width
-  sta ribbon
-  rts
+  adc width                     ; Add each of the two smallest sides twice
+  sta ribbon                    ; Store total in `ribbon`
+  rts                           ; Return from subroutine
 
 GetVolume:
   ; IN:  length, width, height
@@ -251,24 +254,24 @@ GetVolume:
   lda #0
   sta volume                    ; Initialize volume MSD to #$00
   lda length
-  sta volume + 1                ; Initialize volume LSD to length
+  sta volume + 1                ; Init volume LSD to first dimension (length)
   ldx #$06                      ; Address to second dimension (width)
 
   PrepMultiplyMSD:
   lda #0                        ; Initialize accumulator to 0
-  ldy $00,x                     ; Else, get current dimension value
-  jsr MultiplyVolumeMSD         ; Multiply current value by the volume MSD
+  ldy $00,x                     ; Get current dimension value
+  jsr MultiplyVolumeMSD         ; Multiply dimension value by the volume MSD
 
   PrepMultiplyLSD:
   lda #0                        ; Initialize accumulator to 0
   ldy $00,x                     ; Get current dimension value
-  jsr MultiplyVolumeLSD         ; Multiply current value by the volume LSD
+  jsr MultiplyVolumeLSD         ; Multiply dimension value by the volume LSD
 
   NextDimension:
-  inx
-  cpx #$08
-  bne PrepMultiplyMSD
-  rts
+  inx                           ; Move address to next dimension
+  cpx #$08                      ; If not all three dimensions have been used,
+  bne PrepMultiplyMSD           ;   Goto PrepMultiplyMSD
+  rts                           ; Else, volume is calculated, return
 
   MultiplyVolumeMSD:
   ; IN:  `volume` (num) and Y (iterator)
