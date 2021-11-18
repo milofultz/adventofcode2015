@@ -196,41 +196,21 @@ GetVolume:
   sta volume + 1                ; Initialize volume LSD to length
   ldx #$06                      ; Address to second dimension (width)
 
-  PrepMultiplyLSD:
-  lda #0
-  sta temp                      ; Initalize `temp` to 0
-  ldy $00,x                     ; Get current dimension value
-  jsr MultiplyVolumeLSD
-
   PrepMultiplyMSD:
-  lda volume
-  beq SkipMSD
-  lda #0
-  ldy $00,x
-  jsr MultiplyVolumeMSD
-  lda volume
-  SkipMSD:
-  clc
-  adc temp
-  sta volume
+  lda #0                        ; Initialize accumulator to 0
+  beq PrepMultiplyLSD           ; If volume MSD is 0, skip it
+  ldy $00,x                     ; Else, get current dimension value
+  jsr MultiplyVolumeMSD         ; Multiply current value by the volume MSD
+
+  PrepMultiplyLSD:
+  lda #0                        ; Initialize accumulator to 0
+  ldy $00,x                     ; Get current dimension value
+  jsr MultiplyVolumeLSD         ; Multiply current value by the volume LSD
 
   NextDimension:
   inx
   cpx #$08
-  bne PrepMultiplyLSD
-  rts
-
-  MultiplyVolumeLSD:
-  ; IN:  `volume` + 1 (num) and Y (iterator)
-  ; OUT: `volume` + 1 and `temp` as `carry`
-  clc
-  adc volume + 1                ; Add volume LSD to accumulator
-  bcc SkipCarry                 ; If accumulator didn't exceed $ff, continue
-  inc temp                      ; Else, increment `temp`
-  SkipCarry:
-  dey                           ; Decrement iterator
-  bne MultiplyVolumeLSD         ; If Y is not zero, continue multiplication
-  sta volume + 1                ; Else, save accumulator value to volume LSD
+  bne PrepMultiplyMSD
   rts
 
   MultiplyVolumeMSD:
@@ -241,6 +221,19 @@ GetVolume:
   dey                           ; Decrement iterator
   bne MultiplyVolumeMSD         ; If Y is not zero, continue multiplication
   sta volume                    ; Else, save accumulator value to volume MSD
+  rts
+
+  MultiplyVolumeLSD:
+  ; IN:  `volume` + 1 (num) and Y (iterator)
+  ; OUT: `volume` + 1
+  clc
+  adc volume + 1                ; Add volume LSD to accumulator
+  bcc SkipCarry                 ; If accumulator didn't exceed $ff, continue
+  inc volume                    ; Else, increment volume MSD
+  SkipCarry:
+  dey                           ; Decrement iterator
+  bne MultiplyVolumeLSD         ; If Y is not zero, continue multiplication
+  sta volume + 1                ; Else, save accumulator value to volume LSD
   rts
 
 ;FindArea:
