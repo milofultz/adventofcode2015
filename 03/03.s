@@ -45,118 +45,118 @@ ende
 ; Tests for Helper Functions
 ;
 
-  ; GetNextCoord
-
-  ; Test Overflow
-  lda #$5e                      ; Up ^
-  sta $a000
-  lda #$3e                      ; Right >
-  sta $a001
-  lda #$76                      ; Down v
-  sta $a002
-  lda #$3c                      ; Left <
-  sta $a003
-  ; Test Underflow
-  lda #$76                      ; Down v
-  sta $a004
-  lda #$3c                      ; Left <
-  sta $a005
-  lda #$5e                      ; Up ^
-  sta $a006
-  lda #$3e                      ; Right >
-  sta $a007
-  ; Finish
-  lda #0                        ; End of input (null)
-  sta $a008
-
-  ; Test Overflow
-
-  lda #0
-  tax
-  tay
-  sta coordX
-  sta coordY
-  lda #$ff
-  sta coordX + 1
-  sta coordY + 1
-
-  jsr GetNextCoord
-  lda coordY
-  cmp #1
-  bne TestFailed
-  lda coordY + 1
-  bne TestFailed
-  jsr GetNextCoord
-  lda coordX
-  cmp #1
-  bne TestFailed
-  lda coordX + 1
-  bne TestFailed
-  jsr GetNextCoord
-  lda coordY
-  bne TestFailed
-  lda coordY + 1
-  cmp #$ff
-  bne TestFailed
-  jsr GetNextCoord
-  lda coordX
-  bne TestFailed
-  lda coordX + 1
-  cmp #$ff
-  bne TestFailed
-
-  ; Test Underflow
-
-  lda #0
-  tax
-  tay
-  sta coordX
-  sta coordY
-  sta coordX + 1
-  sta coordY + 1
-
-  jsr GetNextCoord
-  lda coordY
-  cmp #$80
-  bne TestFailed
-  lda coordY + 1
-  cmp #$ff
-  bne TestFailed
-  jsr GetNextCoord
-  lda coordX
-  cmp #$80
-  bne TestFailed
-  lda coordX + 1
-  cmp #$ff
-  bne TestFailed
-  jsr GetNextCoord
-  lda coordY
-  bne TestFailed
-  lda coordY + 1
-  bne TestFailed
-  jsr GetNextCoord
-  lda coordX
-  bne TestFailed
-  lda coordX + 1
-  bne TestFailed
-
-  jmp TestPassed
-
-;  ; CheckCoord
+;  ; GetNextCoord
+;
+;  ; Test Overflow
+;  lda #$5e                      ; Up ^
+;  sta $a000
+;  lda #$3e                      ; Right >
+;  sta $a001
+;  lda #$76                      ; Down v
+;  sta $a002
+;  lda #$3c                      ; Left <
+;  sta $a003
+;  ; Test Underflow
+;  lda #$76                      ; Down v
+;  sta $a004
+;  lda #$3c                      ; Left <
+;  sta $a005
+;  lda #$5e                      ; Up ^
+;  sta $a006
+;  lda #$3e                      ; Right >
+;  sta $a007
+;  ; Finish
+;  lda #0                        ; End of input (null)
+;  sta $a008
+;
+;  ; Test Overflow
+;
 ;  lda #0
+;  tax
+;  tay
 ;  sta coordX
 ;  sta coordY
-;  lda #1
+;  lda #$ff
 ;  sta coordX + 1
 ;  sta coordY + 1
-;  lda #4
-;  sta coordsLength
 ;
-;  jsr CheckCoord
-;  cpx #0
+;  jsr GetNextCoord
+;  lda coordY
+;  cmp #1
+;  bne TestFailed
+;  lda coordY + 1
+;  bne TestFailed
+;  jsr GetNextCoord
+;  lda coordX
+;  cmp #1
+;  bne TestFailed
+;  lda coordX + 1
+;  bne TestFailed
+;  jsr GetNextCoord
+;  lda coordY
+;  bne TestFailed
+;  lda coordY + 1
+;  cmp #$ff
+;  bne TestFailed
+;  jsr GetNextCoord
+;  lda coordX
+;  bne TestFailed
+;  lda coordX + 1
+;  cmp #$ff
+;  bne TestFailed
+;
+;  ; Test Underflow
+;
+;  lda #0
+;  tax
+;  tay
+;  sta coordX
+;  sta coordY
+;  sta coordX + 1
+;  sta coordY + 1
+;
+;  jsr GetNextCoord
+;  lda coordY
+;  cmp #$80
+;  bne TestFailed
+;  lda coordY + 1
+;  cmp #$ff
+;  bne TestFailed
+;  jsr GetNextCoord
+;  lda coordX
+;  cmp #$80
+;  bne TestFailed
+;  lda coordX + 1
+;  cmp #$ff
+;  bne TestFailed
+;  jsr GetNextCoord
+;  lda coordY
+;  bne TestFailed
+;  lda coordY + 1
+;  bne TestFailed
+;  jsr GetNextCoord
+;  lda coordX
+;  bne TestFailed
+;  lda coordX + 1
 ;  bne TestFailed
 ;
 ;  jmp TestPassed
+
+  ; isUniqueCoord
+  lda #0
+  sta coordX
+  sta coordY
+  lda #1
+  sta coordX + 1
+  sta coordY + 1
+  lda #4
+  sta coordsLength
+
+  jsr isUniqueCoord
+  cpx #0
+  bne TestFailed
+
+  jmp TestPassed
 
 TestFailed:
   jmp TestFailed
@@ -170,6 +170,13 @@ TestPassed:
 
 Infinite:
   jmp Infinite
+
+isUniqueCoord:
+  ; IN:  uniqueCoords (pointer), coordsLength (pointer), coordX/coordY
+  ; OUT: X as boolean
+
+  ldx #0
+  rts
 
 GetNextCoord:
   ; IN:  memory (address)
