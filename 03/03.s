@@ -6,6 +6,7 @@ enum $00                        ; Declare memory for variables
   coordY rBYTE 2
   uniqueCoords rBYTE 2          ; Pointer at start of array memory
   coordsLength rBYTE 2          ; Number of discrete coordinates (total * 4)
+  coordsIterator rBYTE 2        ; For checking through the array
 ende
 
   org $200
@@ -18,16 +19,17 @@ ende
   lda #0                        ; Init coordinatess to [0, 0]
   tax
   tay
+  sta memory
   sta coordX
   sta coordX + 1
   sta coordY
   sta coordY + 1
-  sta coordsLength
   sta uniqueCoords
-  sta memory
+  sta coordsIterator
   lda #2
   sta coordsLength + 1
   lda #$40
+  sta coordsIterator + 1
   sta uniqueCoords + 1
   lda #$a0
   sta memory + 1
@@ -142,7 +144,7 @@ ende
 ;
 ;  jmp TestPassed
 
-  ; isUniqueCoord
+  ; IsUniqueCoord
   lda #0
   sta coordX
   sta coordY
@@ -152,8 +154,16 @@ ende
   lda #4
   sta coordsLength
 
-  jsr isUniqueCoord
+  jsr IsUniqueCoord
   cpx #0
+  bne TestFailed
+
+  lda #1
+  sta coordX
+  sta coordY
+
+  jsr IsUniqueCoord
+  cpx #1
   bne TestFailed
 
   jmp TestPassed
@@ -171,11 +181,38 @@ TestPassed:
 Infinite:
   jmp Infinite
 
-isUniqueCoord:
-  ; IN:  uniqueCoords (pointer), coordsLength (pointer), coordX/coordY
-  ; OUT: X as boolean
+IsUniqueCoord:
+  ; IN:  uniqueCoords (pointer), coordX/coordY
+  ; OUT: coordinates appended to array
 
-  ldx #0
+  ; X = iterator for X
+  ; Y = iterator for Y
+
+  lda coordX
+  bne CheckNextUniqueCoord      ; If coordX is zero,
+  lda coordY
+  bne CheckNextUniqueCoord      ; and coordY is zero,
+  rts                           ; This is our starting point, and not unique
+
+  ldx #1                        ; Set iterator to uniqueCoordX LSD
+  ldy #3                        ; Set iterator to uniqueCoordY LSD
+  lda #$40
+  sta coordsIterator + 1
+  lda #0
+  sta coordsIterator            ; Set coordsIterator address to #$4000 (ind)
+
+  CheckNextUniqueCoord:
+  ; for each coord in uniqueCoords
+  ;   if coordX LSD matches current uniqueCoordX LSD
+  ;       and if coordX MSD matches current uniqueCoordX MSD
+  ;       and if coordY LSD matches current uniqueCoordY LSD
+  ;       and if coordY MSD matches current uniqueCoordY MSD
+  ;     return from subroutine
+  ;   else
+  ;     increment y by 4
+  ; set x as 1
+  ; return from subroutine
+
   rts
 
 GetNextCoord:
