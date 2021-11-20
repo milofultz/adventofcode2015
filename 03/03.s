@@ -7,6 +7,7 @@ enum $00                        ; Declare memory for variables
   uniqueCoords rBYTE 2          ; Pointer at start of array memory
   coordsLength rBYTE 2          ; Number of discrete coordinates (total * 4)
   coordsIterator rBYTE 2        ; For checking through the array
+  total rBYTE 2                 ; Total number of coordinates
   match rBYTE 1                 ; Boolean for if coords are a match
 ende
 
@@ -143,66 +144,109 @@ ende
 ;  lda coordX + 1
 ;  bne TestFailed
 
-  ; AddCoordIfUnique
+;  ; AddCoordIfUnique
+;
+;  ; Edge: coord is starting point
+;  lda #0
+;  sta coordX
+;  sta coordY
+;  sta coordX + 1
+;  sta coordY + 1
+;  sta $4000                     ; Array memory slots
+;  sta $4001
+;  sta $4002
+;  sta $4003
+;  lda #4
+;  sta coordsLength
+;  lda #$40
+;  sta coordsLength + 1
+;
+;  jsr AddCoordIfUnique
+;  lda coordsLength
+;  cmp #4
+;  bne TestFailed
+;
+;  ; Coord in array
+;  lda #0
+;  sta coordX
+;  sta coordY
+;  sta $4004                     ; Array memory slots, X MSD/Y MSD
+;  sta $4006
+;  lda #1
+;  sta coordX + 1
+;  sta coordY + 1
+;  sta $4005                     ; Array memory slots, X LSD/Y LSD
+;  sta $4007
+;  lda #8
+;  sta coordsLength
+;  lda #$40
+;  sta coordsLength + 1
+;
+;  jsr AddCoordIfUnique
+;  lda coordsLength
+;  cmp #8
+;  bne TestFailed
+;
+;  ; Coord not in array
+;  lda #0
+;  sta coordX
+;  sta coordY
+;  sta coordX + 1
+;  sta $4000                     ; Array memory slots, X MSD/Y MSD
+;  sta $4001
+;  sta $4002
+;  sta $4003
+;  lda #1
+;  sta coordY + 1
+;  lda #4
+;  sta coordsLength
+;  lda #$40
+;  sta coordsLength + 1
+;
+;  jsr AddCoordIfUnique
+;  lda coordsLength
+;  cmp #8
+;  bne TestFailed
 
-  ; Edge: coord is starting point
-  lda #0
-  sta coordX
-  sta coordY
-  sta coordX + 1
-  sta coordY + 1
-  sta coordsLength + 1
-  sta $4004                     ; Array memory slots
-  sta $4005
-  sta $4006
-  sta $4007
-  lda #4
-  sta coordsLength
+  ; CountUniqueCoords
 
-  jsr AddCoordIfUnique
-  lda coordsLength
-  cmp #4
-  bne TestFailed
-
-  ; Coord in array
-  lda #0
-  sta coordX
-  sta coordY
-  sta coordsLength + 1
-  sta $4004                     ; Array memory slots, X MSD/Y MSD
-  sta $4006
-  lda #1
-  sta coordX + 1
-  sta coordY + 1
-  sta $4005                     ; Array memory slots, X LSD/Y LSD
-  sta $4007
-  lda #8
-  sta coordsLength
-
-  jsr AddCoordIfUnique
-  lda coordsLength
-  cmp #8
-  bne TestFailed
-
-  ; Coord not in array
-  lda #0
-  sta coordX
-  sta coordY
-  sta coordX + 1
-  sta $4000                     ; Array memory slots, X MSD/Y MSD
-  sta $4001
-  sta $4002
-  sta $4003
-  lda #1
-  sta coordY + 1
-  lda #4
+  ; Test small amount (LSD)
+  lda #16
   sta coordsLength
   lda #$40
   sta coordsLength + 1
 
-  jsr AddCoordIfUnique
-  lda coordsLength
-  cmp #8
+  jsr CountUniqueCoords
+  lda total
+  bne TestFailed
+  lda total + 1
+  cmp #4
+  bne TestFailed
+
+  ; Test large amount (MSD)
+  lda #0
+  sta coordsLength
+  lda #$41
+  sta coordsLength + 1
+
+  jsr CountUniqueCoords
+  lda total
+  bne TestFailed
+  lda total + 1
+  cmp #$40
+  bne TestFailed
+
+  ; Test Larger amount (LSD and MSD)
+  lda #$40
+  sta coordsLength
+  lda #$48
+  sta coordsLength + 1
+  jsr CountUniqueCoords
+  lda total
+  cmp #$2
+  bne TestFailed
+  lda total + 1
+  cmp #$10
   bne TestFailed
 
 TestPassed:
@@ -218,6 +262,41 @@ TestFailed:
 
 Infinite:
   jmp Infinite
+
+
+CountUniqueCoords:
+  ; IN:  uniqueCoords (pointer), coordsLength (pointer to end)
+  ; OUT: none (updated `total`)
+
+  ; X = holding carried bits during bit shifting
+
+  ; Bit shift uniqueCoords MSD right twice, carrying 1's and 2's place
+
+  lda coordsLength + 1
+  sec
+  sbc uniqueCoords + 1
+  sta total
+  asl
+  asl
+  asl
+  asl
+  asl
+  asl
+  tax                           ; X holds carried bits in correct spots
+  lsr total
+  lsr total
+
+  ; Bit shift uniqueCoords LSD right twice, carrying 1's and 2's place from X
+
+  ; load uniqueCoords LSD
+  lda coordsLength              ; Load coordsLength LSD
+  lsr
+  lsr                           ; Bitshift coordsLength LSD to the right twice
+  sta total + 1                 ; Store in total LSD
+  txa                           ; Load the shifted carry bits
+  ora total + 1                 ; OR shifted carry bits against total LSD
+  sta total + 1                 ; Store result in total LSD
+  rts
 
 AddCoordIfUnique:
   ; IN:  uniqueCoords (pointer), coordsLength (pointer to end), coordX/coordY
