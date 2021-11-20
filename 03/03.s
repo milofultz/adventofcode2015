@@ -348,7 +348,7 @@ AddCoordIfUnique:
   adc #4                        ; Add length of one set of coords
   sta coordsIterator            ; Store new address at coordsIterator LSD
   bcc CheckIfAtEndOfCoords      ; If result didn't overflow over $ff, continue
-  inc coordsIterator            ; Else increment coordsIterator MSD
+  inc coordsIterator + 1        ; Else increment coordsIterator MSD
   jmp CheckIfAtEndOfCoords      ;   and continue
 
   IsUniqueCoord:
@@ -505,6 +505,6 @@ IRQ:
 
   org $a000
   ;incbin "roms/aoc2015/03/ins1.raw"
-  incbin "roms/aoc2015/03/ins2.raw"
+  ;incbin "roms/aoc2015/03/ins2.raw"
   ;incbin "roms/aoc2015/03/ins3.raw"
-  ;ncbin "roms/aoc2015/03/in.raw"
+  incbin "roms/aoc2015/03/in.raw"
