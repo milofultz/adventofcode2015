@@ -7,8 +7,11 @@ enum $00                        ; Declare memory for variables
   uniqueCoords rBYTE 2          ; Pointer at start of array memory
   coordsLength rBYTE 2          ; Number of discrete coordinates (total * 4)
   coordsIterator rBYTE 2        ; For checking through the array
-  total rBYTE 2                 ; Total number of coordinates
   match rBYTE 1                 ; Boolean for if coords are a match
+ende
+
+enum $10
+  total rBYTE 2                 ; Total number of coordinates
 ende
 
   org $200
@@ -28,10 +31,11 @@ ende
   sta coordY + 1
   sta uniqueCoords
   sta coordsIterator
-  lda #2
-  sta coordsLength + 1
-  lda #$40
   sta coordsIterator + 1
+  lda #4
+  sta coordsLength
+  lda #$40
+  sta coordsLength + 1
   sta uniqueCoords + 1
   lda #$a0
   sta memory + 1
@@ -44,6 +48,12 @@ ende
 ; 76 = v
 ; 3c = <
 ; 3e = >
+
+MAIN:
+  jsr GetNextCoord              ; Get next character and convert into coordinate
+  ; jmp CountUniqueCoords       ; If end of input in GetNextCoord, do this
+  jsr AddCoordIfUnique          ; Check coord against existing; add if not seen
+  jmp MAIN                      ; Repeat until end of input is reached
 
 ;
 ; Tests for Helper Functions
@@ -208,52 +218,52 @@ ende
 ;  cmp #8
 ;  bne TestFailed
 
-  ; CountUniqueCoords
-
-  ; Test small amount (LSD)
-  lda #16
-  sta coordsLength
-  lda #$40
-  sta coordsLength + 1
-
-  jsr CountUniqueCoords
-  lda total
-  bne TestFailed
-  lda total + 1
-  cmp #4
-  bne TestFailed
-
-  ; Test large amount (MSD)
-  lda #0
-  sta coordsLength
-  lda #$41
-  sta coordsLength + 1
-
-  jsr CountUniqueCoords
-  lda total
-  bne TestFailed
-  lda total + 1
-  cmp #$40
-  bne TestFailed
-
-  ; Test Larger amount (LSD and MSD)
-  lda #$40
-  sta coordsLength
-  lda #$48
-  sta coordsLength + 1
-  jsr CountUniqueCoords
-  lda total
-  cmp #$2
-  bne TestFailed
-  lda total + 1
-  cmp #$10
-  bne TestFailed
-
-TestPassed:
-  jmp TestPassed
-
-TestFailed:
-  jmp TestFailed
+;  ; CountUniqueCoords
+;
+;  ; Test small amount (LSD)
+;  lda #16
+;  sta coordsLength
+;  lda #$40
+;  sta coordsLength + 1
+;
+;  jsr CountUniqueCoords
+;  lda total
+;  bne TestFailed
+;  lda total + 1
+;  cmp #4
+;  bne TestFailed
+;
+;  ; Test large amount (MSD)
+;  lda #0
+;  sta coordsLength
+;  lda #$41
+;  sta coordsLength + 1
+;
+;  jsr CountUniqueCoords
+;  lda total
+;  bne TestFailed
+;  lda total + 1
+;  cmp #$40
+;  bne TestFailed
+;
+;  ; Test Larger amount (LSD and MSD)
+;  lda #$40
+;  sta coordsLength
+;  lda #$48
+;  sta coordsLength + 1
+;  jsr CountUniqueCoords
+;  lda total
+;  cmp #$2
+;  bne TestFailed
+;  lda total + 1
+;  cmp #$10
+;  bne TestFailed
+;
+;TestPassed:
+;  jmp TestPassed
+;
+;TestFailed:
+;  jmp TestFailed
 
 
 ;
@@ -263,40 +273,6 @@ TestFailed:
 Infinite:
   jmp Infinite
 
-
-CountUniqueCoords:
-  ; IN:  uniqueCoords (pointer), coordsLength (pointer to end)
-  ; OUT: none (updated `total`)
-
-  ; X = holding carried bits during bit shifting
-
-  ; Bit shift uniqueCoords MSD right twice, carrying 1's and 2's place
-
-  lda coordsLength + 1
-  sec
-  sbc uniqueCoords + 1
-  sta total
-  asl
-  asl
-  asl
-  asl
-  asl
-  asl
-  tax                           ; X holds carried bits in correct spots
-  lsr total
-  lsr total
-
-  ; Bit shift uniqueCoords LSD right twice, carrying 1's and 2's place from X
-
-  ; load uniqueCoords LSD
-  lda coordsLength              ; Load coordsLength LSD
-  lsr
-  lsr                           ; Bitshift coordsLength LSD to the right twice
-  sta total + 1                 ; Store in total LSD
-  txa                           ; Load the shifted carry bits
-  ora total + 1                 ; OR shifted carry bits against total LSD
-  sta total + 1                 ; Store result in total LSD
-  rts
 
 AddCoordIfUnique:
   ; IN:  uniqueCoords (pointer), coordsLength (pointer to end), coordX/coordY
@@ -322,7 +298,6 @@ AddCoordIfUnique:
   sta coordsIterator            ; Set coordsIterator to #$4004 (indirect addr)
 
   CheckIfAtEndOfCoords:
-  ; Check if at end of coords
   lda coordsIterator + 1        ; Load coordsIterator MSD
   cmp coordsLength + 1          ; If not the same as coordsLength MSD,
   bne CheckNextUniqueCoord      ;   Continue iterating
@@ -333,7 +308,8 @@ AddCoordIfUnique:
 
   CheckNextUniqueCoord:
   lda #1
-  sta match
+  sta match                     ; Set match boolean to 1 (true)
+
   ldy #0                        ; Initialize local iterator
   lda (coordsIterator),y        ; If uniqueCoordX MSD is not zero,
   cmp coordX                    ; If coordX MSD is the same as coordX MSD,
@@ -367,10 +343,10 @@ AddCoordIfUnique:
 
   GotoNextCoord:
   ldy #0                        ; Reset the iterator
-  lda coordsIterator + 1        ; Load the coordsIterator LSD
+  lda coordsIterator            ; Load the coordsIterator LSD
   clc
   adc #4                        ; Add length of one set of coords
-  sta coordsIterator + 1        ; Store new address at coordsIterator LSD
+  sta coordsIterator            ; Store new address at coordsIterator LSD
   bcc CheckIfAtEndOfCoords      ; If result didn't overflow over $ff, continue
   inc coordsIterator            ; Else increment coordsIterator MSD
   jmp CheckIfAtEndOfCoords      ;   and continue
@@ -394,10 +370,42 @@ AddCoordIfUnique:
   adc #4                        ; Add length of one set of coords
   sta coordsLength              ; Store new address in coordsLength LSD
   bcc EndAddCoord               ; If result didn't overflow over $ff, continue
-  inc coordsLength              ; Else increment coordsIterator MSD and end
+  inc coordsLength + 1          ; Else increment coordsIterator MSD and end
 
   EndAddCoord:
   rts
+
+CountUniqueCoords:
+  ; IN:  uniqueCoords (pointer), coordsLength (pointer to end)
+  ; OUT: none (updated `total`)
+
+  ; X = holding carried bits during bit shifting
+
+  lda coordsLength + 1
+  sec
+  sbc uniqueCoords + 1
+  beq CountUniqueCoordsLSD
+  sta total                     ; Get total amount of coords pre-bit shift
+  asl
+  asl
+  asl
+  asl
+  asl
+  asl                           ; Get the carry bits for the LSD
+  tax                           ; X holds carried bits in correct spots
+  lsr total
+  lsr total                     ; Divide total MSD by 4
+
+  CountUniqueCoordsLSD:
+  lda coordsLength              ; Load coordsLength LSD
+  lsr
+  lsr                           ; Divide coordsLength LSD by 4
+  sta total + 1                 ; Store in total LSD
+  txa                           ; Load the shifted carry bits
+  ora total + 1                 ; OR shifted carry bits against total LSD
+  sta total + 1                 ; Store result in total LSD
+
+  jmp ProgramEnd
 
 GetNextCoord:
   ; IN:  memory (address)
@@ -405,7 +413,7 @@ GetNextCoord:
 
   ldy #0
   lda (memory),y                ; Load memory pointer into the accumulator
-  beq EndProgran                ; If end of input is reached, end program
+  beq CountUniqueCoords         ; If end of input is reached, count coords
   cmp #$76                      ; Else if character is `v`,
   beq DecrementCoordY           ;   Decrement coordY
   cmp #$5e                      ; If character is `^`,
@@ -441,7 +449,7 @@ GetNextCoord:
   bcs IncrementCoordXMSD        ; Else if coordX MSD is already negative,
                                 ;   Increment coordX MSD
   DecrementCoordXMSD:
-  dec coordX                    ; Else, coordX MSD is positive, so increment it
+  dec coordX                    ; Else, coordX MSD is positive, so decrement it
   jmp NextCoordSet
   SetCoordXNegative:
   lda #$80
@@ -476,7 +484,7 @@ GetNextCoord:
   bcs IncrementCoordYMSD        ; Else if coordY MSD is negative and not zero,
                                 ;   Increment coordY MSD
   DecrementCoordYMSD:
-  dec coordY                    ; Else, coordY MSD is positive, so increment it
+  dec coordY                    ; Else, coordY MSD is positive, so decrement it
   jmp NextCoordSet
   SetCoordYNegative:
   lda #$80
@@ -489,15 +497,14 @@ GetNextCoord:
   ContinueGNC:
   rts                           ; Return from subroutine
 
-  EndProgran:
-  rts
-
+ProgramEnd:
+  jmp ProgramEnd
 
 IRQ:
   rti
 
   org $a000
   ;incbin "roms/aoc2015/03/ins1.raw"
-  ;incbin "roms/aoc2015/03/ins2.raw"
+  incbin "roms/aoc2015/03/ins2.raw"
   ;incbin "roms/aoc2015/03/ins3.raw"
-  incbin "roms/aoc2015/03/in.raw"
+  ;ncbin "roms/aoc2015/03/in.raw"
